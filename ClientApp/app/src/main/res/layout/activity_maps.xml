@@ -1,0 +1,60 @@
+<FrameLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <fragment
+        android:id="@+id/map"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context="com.br.myapp.MapActivity" />
+
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/my_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        android:elevation="4dp"
+        android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+        />
+
+    <ImageButton
+        android:id="@+id/myMapLocationButton"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_gravity="top|right"
+        android:onClick="onClickCurrentLocationBtn"
+        android:background="@drawable/ic_my_location_black_24dp"
+        android:contentDescription="My Location"
+        android:layout_marginRight="20dp"
+        android:layout_marginTop="80dp"
+        />
+    <ImageButton
+        android:id="@+id/btnSetTime"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_gravity="top|right"
+        android:onClick="showTimePickerDialog"
+        android:background="@drawable/ic_alarm_black_24dp"
+        android:contentDescription="Set Time"
+        android:layout_marginRight="20dp"
+        android:layout_marginTop="140dp"
+        />
+
+    <Button
+        android:id="@+id/btnOrder"
+        android:layout_width="fill_parent"
+        android:layout_height="80dp"
+        android:layout_gravity="bottom|center"
+        android:onClick="onClickBtnOrder"
+        android:text="Park me!"
+        />
+</FrameLayout>
+
+
