@@ -9,11 +9,13 @@ import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Criteria;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -33,6 +35,9 @@ import android.widget.DatePicker;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
+import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -45,17 +50,20 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.PolylineOptions;
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
 public class MapsActivity extends AppCompatActivity implements
         GoogleMap.OnMyLocationButtonClickListener,
-        OnMapReadyCallback,GoogleMap.OnMapClickListener,
+        OnMapReadyCallback, GoogleMap.OnMapClickListener,
         GoogleMap.OnMapLongClickListener, GoogleMap.OnCameraChangeListener,
         ActivityCompat.OnRequestPermissionsResultCallback,
-        DatePickerDialog.OnDateSetListener,TimePickerDialog.OnTimeSetListener {
+        DatePickerDialog.OnDateSetListener, TimePickerDialog.OnTimeSetListener {
 
     private GoogleMap mMap;
 
@@ -89,11 +97,18 @@ public class MapsActivity extends AppCompatActivity implements
 
     static Calendar cTime;
 
+    Location currentLocation;
+
     static Calendar cDate;
 
 
     private boolean mPermissionDenied = false;
     SupportMapFragment mapFragment;
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+    private GoogleApiClient client;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -115,6 +130,9 @@ public class MapsActivity extends AppCompatActivity implements
 
 
         handleIntent(getIntent());
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
 
@@ -326,7 +344,7 @@ public class MapsActivity extends AppCompatActivity implements
             // Access to the location has been granted to the app.
             mMap.setMyLocationEnabled(true);
 
-            Location currentLocation = getMyLocation();
+            currentLocation = getMyLocation();
             if (currentLocation != null) {
                 LatLng currentCoordinates = new LatLng(
                         currentLocation.getLatitude(),
@@ -524,6 +542,16 @@ public class MapsActivity extends AppCompatActivity implements
 
 
             searchLoc = latLng;
+
+
+            route(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()),latLng);
+
+
+
+//            mMap.addPolyline((new PolylineOptions())
+//                    .add(latLng, new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude())).width(6).color(Color.BLUE)
+//                    .visible(true));
+
         } else {
 
 
@@ -563,14 +591,53 @@ public class MapsActivity extends AppCompatActivity implements
         cDate.set(Calendar.HOUR_OF_DAY, hourOfDay);
         cDate.set(Calendar.MINUTE, minute);
         if (searchMarker != null) {
-            searchMarker.setTitle( cDate.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.LONG, Locale.getDefault())
-                    +" "+hourOfDay
-                    +":"+minute);
-
+            searchMarker.setTitle(cDate.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.LONG, Locale.getDefault())
+                    + " " + hourOfDay
+                    + ":" + minute);
 
 
             searchMarker.showInfoWindow();
         }
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client.connect();
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "Maps Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app deep link URI is correct.
+                Uri.parse("android-app://app.parkme.com.clientapp/http/host/path")
+        );
+        AppIndex.AppIndexApi.start(client, viewAction);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "Maps Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app deep link URI is correct.
+                Uri.parse("android-app://app.parkme.com.clientapp/http/host/path")
+        );
+        AppIndex.AppIndexApi.end(client, viewAction);
+        client.disconnect();
     }
 
     public static class DatePickerFragment extends DialogFragment {
@@ -625,5 +692,49 @@ public class MapsActivity extends AppCompatActivity implements
             // Do something with the time chosen by the user
         }
     }
+
+    protected void route(LatLng sourcePosition, LatLng destPosition) {
+
+
+
+                try {
+
+                    GMapV2DirectionAsyncTask md = (GMapV2DirectionAsyncTask) new GMapV2DirectionAsyncTask(sourcePosition,destPosition, new GMapV2DirectionAsyncTask.AsyncResponse(){
+
+                        @Override
+                        public void processFinish(List<List<HashMap<String, String>>> routes){
+                            ArrayList<LatLng> points = null;
+                            PolylineOptions polyLineOptions = null;
+
+                            // traversing through routes
+                            for (int i = 0; i < routes.size(); i++) {
+                                points = new ArrayList<LatLng>();
+                                polyLineOptions = new PolylineOptions();
+                                List<HashMap<String, String>> path = routes.get(i);
+
+                                for (int j = 0; j < path.size(); j++) {
+                                    HashMap<String, String> point = path.get(j);
+
+                                    double lat = Double.parseDouble(point.get("lat"));
+                                    double lng = Double.parseDouble(point.get("lng"));
+                                    LatLng position = new LatLng(lat, lng);
+
+                                    points.add(position);
+                                }
+
+                                polyLineOptions.addAll(points);
+                                polyLineOptions.width(4);
+                                polyLineOptions.color(Color.BLUE);
+                            }
+
+                            mMap.addPolyline(polyLineOptions);
+                        }
+                    }).execute();
+
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
 }
 
