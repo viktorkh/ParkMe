@@ -20,6 +20,8 @@ public class PathJSONParser {
         JSONArray jRoutes = null;
         JSONArray jLegs = null;
         JSONArray jSteps = null;
+
+        String duratoin;
         try {
             jRoutes = jObject.getJSONArray("routes");
             /** Traversing all routes */
@@ -30,6 +32,8 @@ public class PathJSONParser {
                 /** Traversing all legs */
                 for (int j = 0; j < jLegs.length(); j++) {
                     jSteps = ((JSONObject) jLegs.get(j)).getJSONArray("steps");
+
+                    duratoin = ((JSONObject) jLegs.get(j)).getJSONObject("duration").getString("value");
 
                     /** Traversing all steps */
                     for (int k = 0; k < jSteps.length(); k++) {
@@ -49,6 +53,12 @@ public class PathJSONParser {
                         }
                     }
                     routes.add(path);
+
+                    HashMap<String, String> hm1 = new HashMap<>();
+                    hm1.put("duration", duratoin);
+                    ArrayList<HashMap<String, String>> al = new ArrayList<HashMap<String, String>>();
+                    al.add(hm1);
+                    routes.add(al);
                 }
             }
 

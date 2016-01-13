@@ -8,6 +8,7 @@ import android.app.SearchManager;
 import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Address;
@@ -50,8 +51,14 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -65,7 +72,7 @@ public class MapsActivity extends AppCompatActivity implements
         ActivityCompat.OnRequestPermissionsResultCallback,
         DatePickerDialog.OnDateSetListener, TimePickerDialog.OnTimeSetListener {
 
-    private GoogleMap mMap;
+    private static GoogleMap mMap;
 
     private String searchStr = "";
 
@@ -81,10 +88,18 @@ public class MapsActivity extends AppCompatActivity implements
 
     private static LatLng searchLoc;
 
+    private static Calendar searchTime;
+
     private double circleLat = 31.89470689;
     private double circleLong = 35.01337203;
 
     private static Marker searchMarker;
+    private  static  String estimTime;
+
+
+    private static  Polyline routePolyline;
+
+    private  static  PolylineOptions polyLineOptions;
 
     public static CameraPosition searchLocationCameraPosition = null;
 
@@ -97,22 +112,37 @@ public class MapsActivity extends AppCompatActivity implements
 
     static Calendar cTime;
 
-    Location currentLocation;
+    private static Location  currentLocation;
 
     static Calendar cDate;
 
+    public static Context contextOfApplication;
+
+    public static final String PREFS_NAME = "ParkmePrefsFile";
+
+    public static final String PREFS_ROUTE_NAME = "route";
+    public static final String PREFS_CALENDAR = "calendar";
+    public static final String PREFS_INVOICE = "invoice";
+    public static final String PREFS_SEARCH_LOCATION_LAT = "search_location_lat";
+    public static final String PREFS_SEARCH_LOCATION_LONG = "search_location_long";
+
+    public static String jSonRoute;
+    public static String invoiceNumber;
 
     private boolean mPermissionDenied = false;
+
+    private boolean isFirst = false;
+
     SupportMapFragment mapFragment;
-    /**
-     * ATTENTION: This was auto-generated to implement the App Indexing API.
-     * See https://g.co/AppIndexing/AndroidStudio for more information.
-     */
+
     private GoogleApiClient client;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        contextOfApplication = getApplicationContext();
+
         setContentView(R.layout.activity_maps);
 
         toolbar = (Toolbar) findViewById(R.id.my_toolbar);
@@ -133,8 +163,35 @@ public class MapsActivity extends AppCompatActivity implements
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
+
+        isFirst = false;
+
     }
 
+    @Override
+    protected void onStop(){
+        super.onStop();
+
+        // We need an Editor object to make preference changes.
+        // All objects are from android.context.Context
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+        SharedPreferences.Editor editor = settings.edit();
+
+
+        editor.putString(PREFS_ROUTE_NAME,jSonRoute);
+
+        SimpleDateFormat format = new SimpleDateFormat("EEEE, MMMM d, yyyy 'at' h:mm a");
+        String strTime= format.format(searchTime.getTime());
+        editor.putString(PREFS_CALENDAR,strTime);
+
+
+        editor.putString(PREFS_SEARCH_LOCATION_LAT,String.valueOf( searchLoc.latitude));
+        editor.putString(PREFS_SEARCH_LOCATION_LONG,String.valueOf( searchLoc.longitude));
+        editor.apply();
+
+
+        client.disconnect();
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -268,12 +325,139 @@ public class MapsActivity extends AppCompatActivity implements
 
         if (searchStr.length() > 0) {
 
-            enableSearchLocation(searchStr);
+         //   enableSearchLocation(searchStr);
         } else {
             enableMyLocation();
         }
 
         setCircle();
+
+
+        if(!isFirst){
+
+            try {
+                InitMap();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            isFirst=true;
+        }
+    }
+
+    private void InitMap() throws JSONException {
+
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+
+        jSonRoute = settings.getString(PREFS_ROUTE_NAME,"");
+
+
+        SimpleDateFormat format = new SimpleDateFormat("EEEE, MMMM d, yyyy 'at' h:mm a");
+        Calendar cal = Calendar.getInstance();
+        String strTime= settings.getString(PREFS_CALENDAR,"");
+        try {
+            cal.setTime(format.parse(strTime));
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        searchTime = format.getCalendar();
+
+        try {
+
+            Double strLat = Double.parseDouble( settings.getString(PREFS_SEARCH_LOCATION_LAT,""));
+            Double strLong = Double.parseDouble(settings.getString(PREFS_SEARCH_LOCATION_LONG,""));
+
+            searchLoc = new LatLng(strLat,strLong);
+            ReDrawMap();
+
+        }catch (Exception ex){
+
+            ex.printStackTrace();
+        }
+
+
+
+
+
+
+
+    }
+
+    private void ReDrawMap() throws JSONException {
+
+        ArrayList<LatLng> points = null;
+
+        JSONObject  jObject = new JSONObject(jSonRoute);
+        List<List<HashMap<String, String>>> routes=   new PathJSONParser().parse(jObject);
+
+        if (routes.size() >= 2) {
+            // traversing through routes
+            for (int i = 0; i < routes.size() - 1; i++) {
+                points = new ArrayList<LatLng>();
+                polyLineOptions = new PolylineOptions();
+                List<HashMap<String, String>> path = routes.get(i);
+
+                for (int j = 0; j < path.size(); j++) {
+                    HashMap<String, String> point = path.get(j);
+
+                    double lat = Double.parseDouble(point.get("lat"));
+                    double lng = Double.parseDouble(point.get("lng"));
+                    LatLng position = new LatLng(lat, lng);
+
+                    points.add(position);
+                }
+
+                polyLineOptions.addAll(points);
+                polyLineOptions.width(8);
+                polyLineOptions.color(Color.BLUE);
+            }
+
+            int index = routes.size() - 1;
+
+            List<HashMap<String, String>> durationList = routes.get(index);
+
+            if (durationList.size() > 0) {
+
+                String dur = durationList.get(0).get("duration");
+
+                Calendar calendar = Calendar.getInstance(); // gets a calendar using the default time zone and locale.
+                calendar.add(Calendar.SECOND, Integer.parseInt(dur));
+
+                searchTime = calendar;
+
+                SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
+                String _time = sdf.format(calendar.getTime());
+
+
+                if (searchMarker != null) {
+
+                    searchMarker = mMap.addMarker(new MarkerOptions()
+                            .position(searchLoc));
+
+                    if (searchMarker != null) {
+                        searchMarker.setTitle(calendar.getDisplayName(calendar.DAY_OF_WEEK, Calendar.LONG, Locale.getDefault())
+                                + " " + _time);
+
+
+
+                        searchMarker.showInfoWindow();
+                    }
+                }
+            }
+
+            searchLocationCameraPosition = getSearchLocationCameraPosition(searchLoc);
+
+            CameraUpdate cameraUpdate = CameraUpdateFactory.newCameraPosition(searchLocationCameraPosition);
+
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(searchLoc, 15));
+
+            if (routePolyline != null) {
+                routePolyline.remove();
+            }
+
+
+            routePolyline = mMap.addPolyline(polyLineOptions);
+        }
+
     }
 
     private void setCircle() {
@@ -358,6 +542,8 @@ public class MapsActivity extends AppCompatActivity implements
 
     private void enableSearchLocation(String str) {
 
+
+
         //    str = "עמק איילון 26, מודיעין";
 
         List<Address> addresses;
@@ -381,6 +567,12 @@ public class MapsActivity extends AppCompatActivity implements
 
 
                     searchLoc = new LatLng(addr.getLatitude(), addr.getLongitude());
+
+                    if (mMap != null) {
+
+                       CreateRoute(searchLoc);
+                    }
+
                 } else {
 
 
@@ -389,23 +581,21 @@ public class MapsActivity extends AppCompatActivity implements
                 }
 
 
-                LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+//                LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+//
+//                // Creating a criteria object to retrieve provider
+//                Criteria criteria = new Criteria();
+//
+//                // Getting the name of the best provider
+//                String provider = locationManager.getBestProvider(criteria, true);
+//
+//                // Getting Current Location
+//                Location location = locationManager.getLastKnownLocation(provider);
+//                location.setLatitude(addr.getLatitude());
+//                location.setLongitude(addr.getLongitude());
+//                //drawMarker(location);
+//                latLng = new LatLng(addr.getLatitude(), addr.getLongitude());
 
-                // Creating a criteria object to retrieve provider
-                Criteria criteria = new Criteria();
-
-                // Getting the name of the best provider
-                String provider = locationManager.getBestProvider(criteria, true);
-
-                // Getting Current Location
-                Location location = locationManager.getLastKnownLocation(provider);
-                location.setLatitude(addr.getLatitude());
-                location.setLongitude(addr.getLongitude());
-                //drawMarker(location);
-                latLng = new LatLng(addr.getLatitude(), addr.getLongitude());
-
-
-                //return;
 
             } else {
                 Toast.makeText(getApplicationContext(), R.string.search_location_not_found, Toast.LENGTH_LONG).show();
@@ -422,22 +612,6 @@ public class MapsActivity extends AppCompatActivity implements
         } else if (mMap != null) {
             // Access to the location has been granted to the app.
             mMap.setMyLocationEnabled(true);
-
-            searchLocationCameraPosition = getSearchLocationCameraPosition(latLng);
-
-            mMap.addMarker(new MarkerOptions()
-                    .position(latLng));
-
-            // mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-
-            CameraUpdate cameraUpdate = CameraUpdateFactory.newCameraPosition(searchLocationCameraPosition);
-
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
-
-
-            // mMap.moveCamera(cameraUpdate);
-            // Zoom in the Google Map
-            //     mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
         }
     }
 
@@ -505,7 +679,7 @@ public class MapsActivity extends AppCompatActivity implements
 
     public void onClickBtnOrder(View view) {
 
-        if (searchLoc != null && cDate != null && cTime != null) {
+        if (searchLoc != null && searchTime != null) {
 
             Intent intent = SetOrderActivity
                     .createIntent(this, "Luke Skywalker");
@@ -531,6 +705,18 @@ public class MapsActivity extends AppCompatActivity implements
     public void onMapLongClick(LatLng latLng) {
 
 
+        CreateRoute(latLng);
+
+
+    }
+
+    public boolean CreateRoute(LatLng latLng) {
+
+        if(searchMarker != null){
+
+            searchMarker.remove();
+        }
+
         searchMarker = mMap.addMarker(new MarkerOptions()
                 .position(latLng));
 
@@ -545,21 +731,16 @@ public class MapsActivity extends AppCompatActivity implements
 
 
             route(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()),latLng);
+            return true;
 
-
-
-//            mMap.addPolyline((new PolylineOptions())
-//                    .add(latLng, new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude())).width(6).color(Color.BLUE)
-//                    .visible(true));
 
         } else {
 
 
             Toast.makeText(getApplicationContext(), R.string.search_location_out_of_circle, Toast.LENGTH_LONG).show();
+            return  false;
 
         }
-
-
     }
 
     public void onClickTimeBtn(View view) {
@@ -590,6 +771,9 @@ public class MapsActivity extends AppCompatActivity implements
         cTime = Calendar.getInstance();
         cDate.set(Calendar.HOUR_OF_DAY, hourOfDay);
         cDate.set(Calendar.MINUTE, minute);
+
+        searchTime = cDate;
+
         if (searchMarker != null) {
             searchMarker.setTitle(cDate.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.LONG, Locale.getDefault())
                     + " " + hourOfDay
@@ -620,25 +804,7 @@ public class MapsActivity extends AppCompatActivity implements
         AppIndex.AppIndexApi.start(client, viewAction);
     }
 
-    @Override
-    public void onStop() {
-        super.onStop();
 
-        // ATTENTION: This was auto-generated to implement the App Indexing API.
-        // See https://g.co/AppIndexing/AndroidStudio for more information.
-        Action viewAction = Action.newAction(
-                Action.TYPE_VIEW, // TODO: choose an action type.
-                "Maps Page", // TODO: Define a title for the content shown.
-                // TODO: If you have web page content that matches this app activity's content,
-                // make sure this auto-generated web page URL is correct.
-                // Otherwise, set the URL to null.
-                Uri.parse("http://host/path"),
-                // TODO: Make sure this auto-generated app deep link URI is correct.
-                Uri.parse("android-app://app.parkme.com.clientapp/http/host/path")
-        );
-        AppIndex.AppIndexApi.end(client, viewAction);
-        client.disconnect();
-    }
 
     public static class DatePickerFragment extends DialogFragment {
 
@@ -702,32 +868,78 @@ public class MapsActivity extends AppCompatActivity implements
                     GMapV2DirectionAsyncTask md = (GMapV2DirectionAsyncTask) new GMapV2DirectionAsyncTask(sourcePosition,destPosition, new GMapV2DirectionAsyncTask.AsyncResponse(){
 
                         @Override
-                        public void processFinish(List<List<HashMap<String, String>>> routes){
+                        public void processFinish(List<List<HashMap<String, String>>> routes) {
                             ArrayList<LatLng> points = null;
-                            PolylineOptions polyLineOptions = null;
 
-                            // traversing through routes
-                            for (int i = 0; i < routes.size(); i++) {
-                                points = new ArrayList<LatLng>();
-                                polyLineOptions = new PolylineOptions();
-                                List<HashMap<String, String>> path = routes.get(i);
 
-                                for (int j = 0; j < path.size(); j++) {
-                                    HashMap<String, String> point = path.get(j);
+                            if (routes.size() >= 2) {
+                                // traversing through routes
+                                for (int i = 0; i < routes.size() - 1; i++) {
+                                    points = new ArrayList<LatLng>();
+                                    polyLineOptions = new PolylineOptions();
+                                    List<HashMap<String, String>> path = routes.get(i);
 
-                                    double lat = Double.parseDouble(point.get("lat"));
-                                    double lng = Double.parseDouble(point.get("lng"));
-                                    LatLng position = new LatLng(lat, lng);
+                                    for (int j = 0; j < path.size(); j++) {
+                                        HashMap<String, String> point = path.get(j);
 
-                                    points.add(position);
+                                        double lat = Double.parseDouble(point.get("lat"));
+                                        double lng = Double.parseDouble(point.get("lng"));
+                                        LatLng position = new LatLng(lat, lng);
+
+                                        points.add(position);
+                                    }
+
+                                    polyLineOptions.addAll(points);
+                                    polyLineOptions.width(8);
+                                    polyLineOptions.color(Color.BLUE);
                                 }
 
-                                polyLineOptions.addAll(points);
-                                polyLineOptions.width(4);
-                                polyLineOptions.color(Color.BLUE);
-                            }
+                                int index = routes.size() - 1;
 
-                            mMap.addPolyline(polyLineOptions);
+                                List<HashMap<String, String>> durationList = routes.get(index);
+
+                                if (durationList.size() > 0) {
+
+                                    String dur = durationList.get(0).get("duration");
+
+                                    Calendar calendar = Calendar.getInstance(); // gets a calendar using the default time zone and locale.
+                                    calendar.add(Calendar.SECOND, Integer.parseInt(dur));
+
+                                    searchTime = calendar;
+
+                                    SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
+                                            String _time = sdf.format(calendar.getTime());
+
+
+                                    if (searchMarker != null) {
+
+                                        searchMarker = mMap.addMarker(new MarkerOptions()
+                                                .position(searchLoc));
+
+                                        if (searchMarker != null) {
+                                            searchMarker.setTitle(calendar.getDisplayName(calendar.DAY_OF_WEEK, Calendar.LONG, Locale.getDefault())
+                                                    + " " + _time);
+
+
+
+                                            searchMarker.showInfoWindow();
+                                        }
+                                    }
+                                }
+
+                                searchLocationCameraPosition = getSearchLocationCameraPosition(searchLoc);
+
+                                CameraUpdate cameraUpdate = CameraUpdateFactory.newCameraPosition(searchLocationCameraPosition);
+
+                                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(searchLoc, 15));
+
+                                if (routePolyline != null) {
+                                    routePolyline.remove();
+                                }
+
+
+                                routePolyline = mMap.addPolyline(polyLineOptions);
+                            }
                         }
                     }).execute();
 
@@ -736,5 +948,9 @@ public class MapsActivity extends AppCompatActivity implements
                     e.printStackTrace();
                 }
             }
+
+    public static Context getContextOfApplication(){
+        return contextOfApplication;
+    }
 }
 

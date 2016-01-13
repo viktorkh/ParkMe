@@ -22,6 +22,10 @@ import java.util.List;
  */
 public class GMapV2DirectionAsyncTask extends AsyncTask<String, Void, List<List<HashMap<String, String>>>> {
 
+
+    public static final String PREFS_NAME = "ParkmePrefsFile";
+
+
     public interface AsyncResponse {
         void processFinish(List<List<HashMap<String, String>>> output);
     }
@@ -65,6 +69,8 @@ public class GMapV2DirectionAsyncTask extends AsyncTask<String, Void, List<List<
             InputStream in = new BufferedInputStream(con.getInputStream());
 
             String str = readStream(in);
+
+            MapsActivity.jSonRoute = str;
 
             jObject = new JSONObject(str);
             PathJSONParser parser = new PathJSONParser();
