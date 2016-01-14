@@ -116,7 +116,7 @@ public class MapsActivity extends AppCompatActivity implements
 
     static Calendar cDate;
 
-    public static Context contextOfApplication;
+  //  public static Context contextOfApplication;
 
     public static final String PREFS_NAME = "ParkmePrefsFile";
 
@@ -141,9 +141,13 @@ public class MapsActivity extends AppCompatActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        contextOfApplication = getApplicationContext();
+      //  contextOfApplication = getApplicationContext();
 
         setContentView(R.layout.activity_maps);
+
+
+
+
 
         toolbar = (Toolbar) findViewById(R.id.my_toolbar);
         setSupportActionBar(toolbar);
@@ -949,8 +953,8 @@ public class MapsActivity extends AppCompatActivity implements
                 }
             }
 
-    public static Context getContextOfApplication(){
-        return contextOfApplication;
-    }
+//    public static Context getContextOfApplication(){
+//        return contextOfApplication;
+//    }
 }
 
