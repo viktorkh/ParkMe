@@ -19,16 +19,13 @@ import java.util.Map;
 import javax.net.ssl.HttpsURLConnection;
 
 /**
- * Created by Victor.Khazanov on 11/1/2016.
+ * Created by Victor.Khazanov on 23/1/2016.
  */
-public class SetOrder extends AsyncTask<Void, Void, String> {
+public class ConfirmTask extends AsyncTask<Void, Void, Void> {
 
-    public  final String ORDER_TIME="order_time";
-    public  final String ORDER_CALENDAR="order_time";
-    public  final String ORDER_DAY="order_day";
-    public  final String ORDER_ADDRESS="order_address";
-    public  final String ORDER_ADDRESS_LAT="order_address_lat";
-    public  final String ORDER_ADDRESS_LONG="order_address_long";
+
+    public  final String ORDER_ID="orderId";
+    public  final String TASK_ID="taskId";
     public  final String PHONE_ID="phoneId";
 
     final String BASE_URL =
@@ -50,25 +47,19 @@ public class SetOrder extends AsyncTask<Void, Void, String> {
 
     public AsyncResponse delegate = null;
 
-    public SetOrder(String _time, String _displayName, String _searchLocationAddressString,
-                    String _searchLocationAddressLat, String _searchLocationAddressLong,
-                    String _wholeDateTime,String _phone, AsyncResponse _delegate) {
+    public ConfirmTask(String orderId,String taskId, String _phone, AsyncResponse _delegate) {
 
         this.delegate = _delegate;
 
-        postDataParams.put("time",_time);
-        postDataParams.put("displayName",_displayName);
-        postDataParams.put("searchLocationAddressString",_searchLocationAddressString);
-        postDataParams.put("searchLocationAddressLat",_searchLocationAddressLat);
-        postDataParams.put("searchLocationAddressLong",_searchLocationAddressLong);
-        postDataParams.put("wholeDateTime",_wholeDateTime);
+        postDataParams.put(ORDER_ID,orderId);
+        postDataParams.put(TASK_ID,taskId);
         postDataParams.put(PHONE_ID,_phone);
 
     }
 
 
     @Override
-    protected String doInBackground(Void... params) {
+    protected Void doInBackground(Void... params) {
 
         HttpsURLConnection urlConnection = null;
         BufferedReader reader = null;
@@ -111,8 +102,6 @@ public class SetOrder extends AsyncTask<Void, Void, String> {
                 response="";
 
             }
-
-            return response;
 
 
         } catch (Exception ex) {

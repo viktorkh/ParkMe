@@ -14,6 +14,9 @@ public class ParseComServerAuthenticate implements ServerAuthenticate {
         String url = "https://api.parse.com/1/users";
         String authtoken = null;
 
+
+        authtoken ="1";
+
 //        DefaultHttpClient httpClient = new DefaultHttpClient();
 //        HttpPost httpPost = new HttpPost(url);
 //

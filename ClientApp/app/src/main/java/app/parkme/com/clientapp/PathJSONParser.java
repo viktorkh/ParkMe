@@ -22,6 +22,9 @@ public class PathJSONParser {
         JSONArray jSteps = null;
 
         String duratoin;
+        String address;
+        String addressLat;
+        String addressLong;
         try {
             jRoutes = jObject.getJSONArray("routes");
             /** Traversing all routes */
@@ -34,6 +37,9 @@ public class PathJSONParser {
                     jSteps = ((JSONObject) jLegs.get(j)).getJSONArray("steps");
 
                     duratoin = ((JSONObject) jLegs.get(j)).getJSONObject("duration").getString("value");
+                    address = ((JSONObject) jLegs.get(j)).getString("end_address");
+                    addressLat=((JSONObject) jLegs.get(j)).getJSONObject("end_location").getString("lat");
+                    addressLong=((JSONObject) jLegs.get(j)).getJSONObject("end_location").getString("lng");
 
                     /** Traversing all steps */
                     for (int k = 0; k < jSteps.length(); k++) {
@@ -54,10 +60,22 @@ public class PathJSONParser {
                     }
                     routes.add(path);
 
-                    HashMap<String, String> hm1 = new HashMap<>();
-                    hm1.put("duration", duratoin);
+                    HashMap<String, String> hmDuration = new HashMap<>();
+                    hmDuration.put("duration", duratoin);
+                    HashMap<String, String> hmAddress = new HashMap<>();
+                    hmAddress.put("address", address);
+
+                    HashMap<String, String> hmAddressLat = new HashMap<>();
+                    hmAddress.put("addressLat", addressLat);
+
+                    HashMap<String, String> hmAddressLong = new HashMap<>();
+                    hmAddress.put("addressLong", addressLong);
+
                     ArrayList<HashMap<String, String>> al = new ArrayList<HashMap<String, String>>();
-                    al.add(hm1);
+                    al.add(hmDuration);
+                    al.add(hmAddress);
+                    al.add(hmAddressLat);
+                    al.add(hmAddressLong);
                     routes.add(al);
                 }
             }
