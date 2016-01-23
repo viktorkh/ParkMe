@@ -5,18 +5,15 @@ import android.os.AsyncTask;
 import android.util.Log;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
-
-import javax.net.ssl.HttpsURLConnection;
 
 /**
  * Created by Victor.Khazanov on 11/1/2016.
@@ -32,17 +29,22 @@ public class SetOrder extends AsyncTask<Void, Void, String> {
     public  final String PHONE_ID="phoneId";
 
     final String BASE_URL =
-            "http://api.openweathermap.org/data/2.5/forecast/daily?";
+            "http://clickconnectfrankfurt.clicksoftware.com/test/api/order/SetOrderGet";
+            //?token=0544571497&orderTime=23-01-2016%2018:42&orderAddress=ddd";
     final String QUERY_PARAM = "";
 
     public final String TAG = SetOrder.class.getSimpleName();
 
 
-    String requestMethod = "POST";
+    String requestMethod = "GET";
     String queryParam = "";
     String orderJsonStr;
+    String phone="";
+    String wholeDateTime="";
+    String searchLocationAddressString="";
 
-    HashMap<String, String> postDataParams;
+
+   // HashMap<String, String> postDataParams;
 
     public interface AsyncResponse {
         void processFinish(String output);
@@ -56,13 +58,18 @@ public class SetOrder extends AsyncTask<Void, Void, String> {
 
         this.delegate = _delegate;
 
-        postDataParams.put("time",_time);
-        postDataParams.put("displayName",_displayName);
-        postDataParams.put("searchLocationAddressString",_searchLocationAddressString);
-        postDataParams.put("searchLocationAddressLat",_searchLocationAddressLat);
-        postDataParams.put("searchLocationAddressLong",_searchLocationAddressLong);
-        postDataParams.put("wholeDateTime",_wholeDateTime);
-        postDataParams.put(PHONE_ID,_phone);
+        this.phone = _phone;
+        this.wholeDateTime = _wholeDateTime;
+        this.searchLocationAddressString = _searchLocationAddressString;
+        queryParam = queryParam + "?token=" + _phone + "&orderTime=" + _wholeDateTime + "&orderAddress=" + _searchLocationAddressString;
+
+//        postDataParams.put("time",_time);
+//        postDataParams.put("displayName",_displayName);
+//        postDataParams.put("searchLocationAddressString",_searchLocationAddressString);
+//        postDataParams.put("searchLocationAddressLat",_searchLocationAddressLat);
+//        postDataParams.put("searchLocationAddressLong",_searchLocationAddressLong);
+//        postDataParams.put("wholeDateTime",_wholeDateTime);
+//        postDataParams.put(PHONE_ID,_phone);
 
     }
 
@@ -70,47 +77,31 @@ public class SetOrder extends AsyncTask<Void, Void, String> {
     @Override
     protected String doInBackground(Void... params) {
 
-        HttpsURLConnection urlConnection = null;
+        HttpURLConnection urlConnection = null;
         BufferedReader reader = null;
         String response = "";
 
         try {
 
+            String str = "http://clickconnectfrankfurt.clicksoftware.com/test/api/account";
+
             Uri builtUri = Uri.parse(BASE_URL).buildUpon()
-                    .appendQueryParameter(QUERY_PARAM, queryParam)
+                    .appendQueryParameter("token", this.phone)
+                    .appendQueryParameter("orderTime", this.wholeDateTime)
+                    .appendQueryParameter("orderAddress", this.searchLocationAddressString)
                     .build();
+
+            Uri builtUri_Test = Uri.parse(str).buildUpon()
+                    // .appendQueryParameter(QUERY_PARAM, queryParam)
+                    .build();
+
+          //  URL url = new URL(builtUri.toString());
 
             URL url = new URL(builtUri.toString());
 
-            urlConnection = (HttpsURLConnection) url.openConnection();
-            urlConnection.setReadTimeout(15000);
-            urlConnection.setConnectTimeout(15000);
-            urlConnection.setRequestMethod(requestMethod);
-            urlConnection.setDoInput(true);
-            urlConnection.setDoOutput(true);
+            urlConnection = (HttpURLConnection) url.openConnection();
 
-
-            OutputStream os = urlConnection.getOutputStream();
-            BufferedWriter writer = new BufferedWriter(
-                    new OutputStreamWriter(os, "UTF-8"));
-            writer.write(getPostDataString(postDataParams));
-
-            writer.flush();
-            writer.close();
-            os.close();
-            int responseCode=urlConnection.getResponseCode();
-
-            if (responseCode == HttpsURLConnection.HTTP_OK) {
-                String line;
-                BufferedReader br=new BufferedReader(new InputStreamReader(urlConnection.getInputStream()));
-                while ((line=br.readLine()) != null) {
-                    response+=line;
-                }
-            }
-            else {
-                response="";
-
-            }
+            response = readStream(urlConnection.getInputStream());
 
             return response;
 
@@ -135,6 +126,9 @@ public class SetOrder extends AsyncTask<Void, Void, String> {
         return null;
     }
 
+
+
+
     private String getPostDataString(HashMap<String, String> params) throws UnsupportedEncodingException {
         StringBuilder result = new StringBuilder();
         boolean first = true;
@@ -157,5 +151,35 @@ public class SetOrder extends AsyncTask<Void, Void, String> {
     protected void onPostExecute(String result) {
         delegate.processFinish(result);
     }
+
+    private String readStream(InputStream in) {
+        BufferedReader reader = null;
+        StringBuffer response = new StringBuffer();
+
+        String str;
+        try {
+            reader = new BufferedReader(new InputStreamReader(in));
+            String line = "";
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+
+            str=response.toString();
+            int x=8;
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return response.toString();
+    }
+
 
 }

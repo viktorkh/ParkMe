@@ -118,7 +118,7 @@ public class LoginActivity extends AppCompatActivity {
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
         SharedPreferences.Editor editor = settings.edit();
         editor.putString(PREFS_PHONE_NAME, phone);
-        editor.apply();
+        editor.commit();
 
         // TODO: Implement your own authentication logic here.
 

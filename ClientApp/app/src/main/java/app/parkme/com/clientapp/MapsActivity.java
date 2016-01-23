@@ -119,9 +119,9 @@ public class MapsActivity extends AppCompatActivity implements
     static Calendar cDate;
 
     public static final String PREFS_NAME = "ParkmePrefsFile";
-    public static final String PREFS_PHONE_NAME = "phone";
-    public static final String PREFS_ROUTE_NAME = "route";
-    public static final String PREFS_CALENDAR = "calendar";
+    public static final String PREFS_PHONE_NAME = "PHONE";
+    public static final String PREFS_ROUTE_NAME = "ROUTE";
+    public static final String PREFS_CALENDAR = "CALENDAR";
     public static final String PREFS_INVOICE = "invoice";
     public static final String PREFS_SEARCH_LOCATION_LAT = "search_location_lat";
     public static final String PREFS_SEARCH_LOCATION_LONG = "search_location_long";
@@ -167,6 +167,14 @@ public class MapsActivity extends AppCompatActivity implements
         client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
 
         isFirst = false;
+
+
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+
+        String _phone = settings.getString(PREFS_PHONE_NAME, "");
+
+
+        int s=8;
 
     }
 
@@ -685,7 +693,7 @@ public class MapsActivity extends AppCompatActivity implements
                             SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
                             String _time = sdf.format(searchTime.getTime());
 
-                            SimpleDateFormat gottenDate = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+                            SimpleDateFormat gottenDate = new SimpleDateFormat("dd-MM-yyyy HH:mm");
                             String wholeDateTime = gottenDate.format(searchTime.getTime());
 
 
@@ -728,11 +736,11 @@ public class MapsActivity extends AppCompatActivity implements
                      wholeDateTime,_phone, new SetOrder.AsyncResponse() {
 
                 @Override
-                public void processFinish(String str) {
+                public void processFinish(String orderId) {
 
 
                     Intent intent = SetOrderActivity
-                            .createIntent(getApplicationContext(),time);
+                            .createIntent(getApplicationContext(),time,orderId);
 
                     startActivity(intent);
 
@@ -742,6 +750,7 @@ public class MapsActivity extends AppCompatActivity implements
         catch (Exception e){
 
 
+            int s=8;
         }
 
 
