@@ -8,6 +8,7 @@ import android.app.ProgressDialog;
 import android.app.SearchManager;
 import android.app.TimePickerDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -24,6 +25,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.ActionBar;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
@@ -88,7 +90,7 @@ public class MapsActivity extends AppCompatActivity implements
     private final int LIMIT_ATTEMPTS_FIND_LOCATION = 1;
 
 
-    private static Location  currentLocation;
+    private static Location currentLocation;
     private static Circle circle;
     private static LatLng centerCircle;
     private static LatLng searchLoc;
@@ -101,11 +103,11 @@ public class MapsActivity extends AppCompatActivity implements
     private double circleLong = 34.8003553;
 
     private static Marker searchMarker;
-    private  static  String estimTime;
+    private static String estimTime;
 
 
-    private static  Polyline routePolyline;
-    private  static  PolylineOptions polyLineOptions;
+    private static Polyline routePolyline;
+    private static PolylineOptions polyLineOptions;
 
     public static CameraPosition searchLocationCameraPosition = null;
 
@@ -121,11 +123,13 @@ public class MapsActivity extends AppCompatActivity implements
     public static final String PREFS_NAME = "ParkmePrefsFile";
     public static final String PREFS_PHONE_NAME = "PHONE";
     public static final String PREFS_ROUTE_NAME = "ROUTE";
+    public static final String PREFS_ORDER_ID_NAME = "ORDER_ID";
+
     public static final String PREFS_CALENDAR = "CALENDAR";
     public static final String PREFS_INVOICE = "invoice";
     public static final String PREFS_SEARCH_LOCATION_LAT = "search_location_lat";
     public static final String PREFS_SEARCH_LOCATION_LONG = "search_location_long";
-
+    public static final String PREFS_SEARCH_LOCATION_STRING = "search_location_string";
     public static String jSonRoute;
     public static String invoiceNumber;
 
@@ -144,7 +148,7 @@ public class MapsActivity extends AppCompatActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-      //  contextOfApplication = getApplicationContext();
+        //  contextOfApplication = getApplicationContext();
 
         setContentView(R.layout.activity_maps);
         toolbar = (Toolbar) findViewById(R.id.my_toolbar);
@@ -169,33 +173,42 @@ public class MapsActivity extends AppCompatActivity implements
         isFirst = false;
 
 
-        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 
-        String _phone = settings.getString(PREFS_PHONE_NAME, "");
-
-
-        int s=8;
 
     }
 
     @Override
-    protected void onStop(){
+    protected void onStop() {
         super.onStop();
 
 
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
         SharedPreferences.Editor editor = settings.edit();
 
+        if (jSonRoute.length() > 0) {
+            editor.putString(PREFS_ROUTE_NAME, jSonRoute);
+        }
 
-        editor.putString(PREFS_ROUTE_NAME, jSonRoute);
+        if (searchTime != null) {
+            SimpleDateFormat format = new SimpleDateFormat("EEEE, MMMM d, yyyy 'at' h:mm a");
 
-        SimpleDateFormat format = new SimpleDateFormat("EEEE, MMMM d, yyyy 'at' h:mm a");
-        String strTime= format.format(searchTime.getTime());
-        editor.putString(PREFS_CALENDAR, strTime);
+            String strTime = format.format(searchTime.getTime());
+            editor.putString(PREFS_CALENDAR, strTime);
+        }
+
+        if(searchLoc !=null)
+        {
+            editor.putString(PREFS_SEARCH_LOCATION_LAT, String.valueOf(searchLoc.latitude));
+            editor.putString(PREFS_SEARCH_LOCATION_LONG, String.valueOf(searchLoc.longitude));
+        }
+
+        if (searchLocationAddressString.length() > 0) {
+
+            editor.putString(PREFS_SEARCH_LOCATION_STRING, String.valueOf(searchLocationAddressString));
 
 
-        editor.putString(PREFS_SEARCH_LOCATION_LAT, String.valueOf(searchLoc.latitude));
-        editor.putString(PREFS_SEARCH_LOCATION_LONG,String.valueOf( searchLoc.longitude));
+        }
+
         editor.apply();
 
 
@@ -297,7 +310,6 @@ public class MapsActivity extends AppCompatActivity implements
     public void onMapReady(GoogleMap googleMap) {
 
 
-
         mMap = googleMap;
 
         mMap.setOnMapClickListener(this);
@@ -315,11 +327,12 @@ public class MapsActivity extends AppCompatActivity implements
         if (!checkReady()) {
             return;
         }
-
+        setCircle();
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
             mMap.setMyLocationEnabled(true);
+            navigateToCircle();
         } else {
             // Uncheck the box and request missing location permission.
 
@@ -330,35 +343,36 @@ public class MapsActivity extends AppCompatActivity implements
 
         if (searchStr.length() > 0) {
 
-         //   enableSearchLocation(searchStr);
+            //   enableSearchLocation(searchStr);
         } else {
-            enableMyLocation();
+            navigateToCircle();
         }
 
-        setCircle();
 
 
-        if(!isFirst){
+
+        if (!isFirst) {
 
             try {
                 InitMap();
             } catch (JSONException e) {
                 e.printStackTrace();
             }
-            isFirst=true;
+            isFirst = true;
         }
     }
+
 
     private void InitMap() throws JSONException {
 
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 
-        jSonRoute = settings.getString(PREFS_ROUTE_NAME,"");
+        jSonRoute = settings.getString(PREFS_ROUTE_NAME, "");
 
 
         SimpleDateFormat format = new SimpleDateFormat("EEEE, MMMM d, yyyy 'at' h:mm a");
         Calendar cal = Calendar.getInstance();
-        String strTime= settings.getString(PREFS_CALENDAR, "");
+        String strTime = settings.getString(PREFS_CALENDAR, "");
         try {
             cal.setTime(format.parse(strTime));
         } catch (ParseException e) {
@@ -368,23 +382,21 @@ public class MapsActivity extends AppCompatActivity implements
 
         try {
 
-            if (searchLoc == null ) {
+            if (searchLoc == null) {
                 Double strLat = Double.parseDouble(settings.getString(PREFS_SEARCH_LOCATION_LAT, ""));
                 Double strLong = Double.parseDouble(settings.getString(PREFS_SEARCH_LOCATION_LONG, ""));
 
                 searchLoc = new LatLng(strLat, strLong);
+
+
+                searchLocationAddressString = settings.getString(PREFS_SEARCH_LOCATION_STRING, "");
             }
             ReDrawMap();
 
-        }catch (Exception ex){
+        } catch (Exception ex) {
 
             ex.printStackTrace();
         }
-
-
-
-
-
 
 
     }
@@ -393,8 +405,8 @@ public class MapsActivity extends AppCompatActivity implements
 
         ArrayList<LatLng> points = null;
 
-        JSONObject  jObject = new JSONObject(jSonRoute);
-        List<List<HashMap<String, String>>> routes=   new PathJSONParser().parse(jObject);
+        JSONObject jObject = new JSONObject(jSonRoute);
+        List<List<HashMap<String, String>>> routes = new PathJSONParser().parse(jObject);
 
         if (routes.size() >= 2) {
             // traversing through routes
@@ -441,20 +453,19 @@ public class MapsActivity extends AppCompatActivity implements
                 }
 
 
-                    searchMarker = mMap.addMarker(new MarkerOptions()
-                            .position(searchLoc));
+                searchMarker = mMap.addMarker(new MarkerOptions()
+                        .position(searchLoc));
 
-                    if (searchMarker != null) {
-
-
-                        searchMarker.setTitle(calendar.getDisplayName(calendar.DAY_OF_WEEK, Calendar.LONG, Locale.getDefault())
-                                + " " + _time);
+                if (searchMarker != null) {
 
 
+                    searchMarker.setTitle(calendar.getDisplayName(calendar.DAY_OF_WEEK, Calendar.LONG, Locale.getDefault())
+                            + " " + _time);
 
-                        searchMarker.showInfoWindow();
-                    }
+
+                    searchMarker.showInfoWindow();
                 }
+            }
 
 
             searchLocationCameraPosition = getSearchLocationCameraPosition(searchLoc);
@@ -541,12 +552,21 @@ public class MapsActivity extends AppCompatActivity implements
             // Access to the location has been granted to the app.
             mMap.setMyLocationEnabled(true);
 
-            currentLocation = getMyLocation();
+            currentLocation = mMap.getMyLocation();
             if (currentLocation != null) {
                 LatLng currentCoordinates = new LatLng(
                         currentLocation.getLatitude(),
                         currentLocation.getLongitude());
+
+                CameraPosition cameraCenter=getSearchLocationCameraPosition(currentCoordinates);
+
+                CameraUpdate cameraUpdate = CameraUpdateFactory.newCameraPosition(cameraCenter);
+
                 mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentCoordinates, 15));
+
+
+                //      mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(currentCoordinates.latitude, currentCoordinates.longitude), 15));
+
             }
 
 
@@ -554,7 +574,6 @@ public class MapsActivity extends AppCompatActivity implements
     }
 
     private void enableSearchLocation(String str) {
-
 
 
         List<Address> addresses;
@@ -583,8 +602,7 @@ public class MapsActivity extends AppCompatActivity implements
                     if (mMap != null) {
 
 
-
-                       CreateRoute(searchLoc);
+                        CreateRoute(searchLoc);
                     }
 
                 } else {
@@ -593,7 +611,6 @@ public class MapsActivity extends AppCompatActivity implements
                     Toast.makeText(getApplicationContext(), R.string.search_location_out_of_circle, Toast.LENGTH_LONG).show();
 
                 }
-
 
 
             } else {
@@ -675,7 +692,7 @@ public class MapsActivity extends AppCompatActivity implements
         if (searchLoc != null && searchTime != null) {
 
 
-        //    _orderButton.setEnabled(false);
+            //    _orderButton.setEnabled(false);
 
             final ProgressDialog progressDialog = new ProgressDialog(MapsActivity.this);
             progressDialog.setIndeterminate(true);
@@ -713,8 +730,6 @@ public class MapsActivity extends AppCompatActivity implements
                     }, 3000);
 
 
-
-
         }
 
 
@@ -731,29 +746,26 @@ public class MapsActivity extends AppCompatActivity implements
 
 
         try {
-            SetOrder so = (SetOrder) new SetOrder( time,  displayName,  searchLocationAddressString,
-                    searchLocationAddressLat,  searchLocationAddressLong,
-                     wholeDateTime,_phone, new SetOrder.AsyncResponse() {
+            SetOrder so = (SetOrder) new SetOrder(time, displayName, searchLocationAddressString,
+                    searchLocationAddressLat, searchLocationAddressLong,
+                    wholeDateTime, _phone, new SetOrder.AsyncResponse() {
 
                 @Override
                 public void processFinish(String orderId) {
 
 
                     Intent intent = SetOrderActivity
-                            .createIntent(getApplicationContext(),time,orderId);
+                            .createIntent(getApplicationContext(), time, orderId);
 
                     startActivity(intent);
 
                 }
             }).execute();
+        } catch (Exception e) {
+
+
+            int s = 8;
         }
-        catch (Exception e){
-
-
-            int s=8;
-        }
-
-
 
 
     }
@@ -779,7 +791,7 @@ public class MapsActivity extends AppCompatActivity implements
 
     public boolean CreateRoute(LatLng latLng) {
 
-        if(searchMarker != null){
+        if (searchMarker != null) {
 
             searchMarker.remove();
         }
@@ -797,7 +809,7 @@ public class MapsActivity extends AppCompatActivity implements
             searchLoc = latLng;
 
 
-            route(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()),latLng);
+            route(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), latLng);
             return true;
 
 
@@ -805,20 +817,105 @@ public class MapsActivity extends AppCompatActivity implements
 
 
             Toast.makeText(getApplicationContext(), R.string.search_location_out_of_circle, Toast.LENGTH_LONG).show();
-            return  false;
+            return false;
 
         }
     }
 
-    public void onClickTimeBtn(View view) {
+    public void onClickBtnConfirmTask(View view) {
 
 
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+
+        String orderId = settings.getString(PREFS_ORDER_ID_NAME, "");
+
+
+        if (orderId.length() > 0) {
+
+
+            new AlertDialog.Builder(this)
+                    .setMessage("Confirm order: " + orderId)
+                    .setCancelable(false)
+                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
+
+
+                            clearPrevOrder();
+
+
+
+                        }
+
+                    })
+                    .setNegativeButton("No", null)
+                    .show();
+
+
+        }
+    }
+
+    private void clearPrevOrder() {
+
+
+        clearPrefs();
+
+
+        clearStatics();
+
+        if (searchMarker != null) {
+
+            searchMarker.remove();
+            mMap.clear();
+
+            //enableMyLocation();
+
+            if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+                return;
+            }
+            mMap.setMyLocationEnabled(true);
+            setCircle();
+
+        }
+    }
+
+    private void clearStatics() {
+        currentLocation = null;
+
+        searchLoc = null;
+        searchLocationAddressString = null;
+        searchLocationAddressLong = null;
+        searchLocationAddressLat = null;
+
+        routePolyline = null;
+        polyLineOptions = null;
+        searchTime = null;
+        jSonRoute = null;
+    }
+
+    private void clearPrefs() {
+
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+
+        settings.edit().remove(PREFS_ORDER_ID_NAME).commit();
+
+        settings.edit().remove(PREFS_ROUTE_NAME).commit();
+
+        settings.edit().remove(PREFS_CALENDAR).commit();
+
+        settings.edit().remove(PREFS_SEARCH_LOCATION_LAT).commit();
+
+        settings.edit().remove(PREFS_SEARCH_LOCATION_LONG).commit();
+
+        settings.edit().remove(PREFS_SEARCH_LOCATION_STRING).commit();
     }
 
     public void showTimePickerDialog(View v) {
         DatePickerFragment newFragment = new DatePickerFragment();
         newFragment.show(getSupportFragmentManager(), "datePicker");
     }
+
+
 
     // handle the date selected
     @Override
@@ -871,11 +968,6 @@ public class MapsActivity extends AppCompatActivity implements
         AppIndex.AppIndexApi.start(client, viewAction);
     }
 
-    public void onClickBtnConfirmTask(View view) {
-
-
-
-    }
 
     public static class DatePickerFragment extends DialogFragment {
 

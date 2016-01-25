@@ -2,6 +2,7 @@ package app.parkme.com.clientapp;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.TextView;
@@ -13,6 +14,10 @@ public class SetOrderActivity extends AppCompatActivity {
 
     public static final String ORDER_TIME="order_time";
     public static final String ORDER_ID="order_id";
+    public static final String PREFS_NAME = "ParkmePrefsFile";
+    public static final String PREFS_ORDER_ID_NAME = "ORDER_ID";
+
+
 
     @Bind(R.id.lblPickYourCar)
     TextView _lblPickYourCar;
@@ -50,6 +55,15 @@ public class SetOrderActivity extends AppCompatActivity {
             lblOrderId.setText( intent.getStringExtra(ORDER_ID));
 
         }
+
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+        SharedPreferences.Editor editor = settings.edit();
+
+
+        editor.putString(PREFS_ORDER_ID_NAME, intent.getStringExtra(ORDER_ID));
+
+        editor.apply();
+
 
     }
 

@@ -62,13 +62,14 @@ public class LoginActivity extends AppCompatActivity {
         ButterKnife.bind(this);
 
 
-        if(USER_PHONE.length()>0){
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 
-            _input_phone.setText(USER_PHONE);
-
-
+        String _phone = settings.getString(PREFS_PHONE_NAME, "");
 
 
+        if(_phone.length()>0){
+
+            _input_phone.setText(_phone);
         }
 
         _loginButton.setOnClickListener(new View.OnClickListener() {
