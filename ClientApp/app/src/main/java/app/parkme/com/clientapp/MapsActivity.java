@@ -185,7 +185,7 @@ public class MapsActivity extends AppCompatActivity implements
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
         SharedPreferences.Editor editor = settings.edit();
 
-        if (jSonRoute.length() > 0) {
+        if (jSonRoute !=null && jSonRoute.length() > 0) {
             editor.putString(PREFS_ROUTE_NAME, jSonRoute);
         }
 
@@ -202,7 +202,7 @@ public class MapsActivity extends AppCompatActivity implements
             editor.putString(PREFS_SEARCH_LOCATION_LONG, String.valueOf(searchLoc.longitude));
         }
 
-        if (searchLocationAddressString.length() > 0) {
+        if (searchLocationAddressString !=null && searchLocationAddressString.length() > 0) {
 
             editor.putString(PREFS_SEARCH_LOCATION_STRING, String.valueOf(searchLocationAddressString));
 
@@ -367,29 +367,36 @@ public class MapsActivity extends AppCompatActivity implements
 
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 
-        jSonRoute = settings.getString(PREFS_ROUTE_NAME, "");
+        if(settings.contains(PREFS_ROUTE_NAME)) {
 
-
-        SimpleDateFormat format = new SimpleDateFormat("EEEE, MMMM d, yyyy 'at' h:mm a");
-        Calendar cal = Calendar.getInstance();
-        String strTime = settings.getString(PREFS_CALENDAR, "");
-        try {
-            cal.setTime(format.parse(strTime));
-        } catch (ParseException e) {
-            e.printStackTrace();
+            jSonRoute = settings.getString(PREFS_ROUTE_NAME, "");
         }
-        searchTime = format.getCalendar();
+
+        if(settings.contains(PREFS_CALENDAR)) {
+            SimpleDateFormat format = new SimpleDateFormat("EEEE, MMMM d, yyyy 'at' h:mm a");
+            Calendar cal = Calendar.getInstance();
+            String strTime = settings.getString(PREFS_CALENDAR, "");
+            try {
+                cal.setTime(format.parse(strTime));
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+            searchTime = format.getCalendar();
+        }
 
         try {
 
-            if (searchLoc == null) {
+            if (searchLoc == null && settings.contains(PREFS_SEARCH_LOCATION_LAT)&&settings.contains(PREFS_SEARCH_LOCATION_LONG)) {
                 Double strLat = Double.parseDouble(settings.getString(PREFS_SEARCH_LOCATION_LAT, ""));
                 Double strLong = Double.parseDouble(settings.getString(PREFS_SEARCH_LOCATION_LONG, ""));
 
                 searchLoc = new LatLng(strLat, strLong);
 
 
-                searchLocationAddressString = settings.getString(PREFS_SEARCH_LOCATION_STRING, "");
+                if(settings.contains(PREFS_SEARCH_LOCATION_STRING)) {
+
+                    searchLocationAddressString = settings.getString(PREFS_SEARCH_LOCATION_STRING, "");
+                }
             }
             ReDrawMap();
 
@@ -516,29 +523,51 @@ public class MapsActivity extends AppCompatActivity implements
         // Get location from GPS if it's available
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED) {
+                != PackageManager.PERMISSION_GRANTED) {
+            // Permission to access the location is missing.
+            PermissionUtils.requestPermission(this, LOCATION_PERMISSION_REQUEST_CODE,
+                    Manifest.permission.ACCESS_FINE_LOCATION, true);
+        } else if (mMap != null) {
+            // Access to the location has been granted to the app.
             mMap.setMyLocationEnabled(true);
-        } else {
-            // Uncheck the box and request missing location permission.
 
-            PermissionUtils.requestPermission(this, LOCATION_LAYER_PERMISSION_REQUEST_CODE,
-                    Manifest.permission.ACCESS_FINE_LOCATION, false);
+            currentLocation = mMap.getMyLocation();
+
+//        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+//                == PackageManager.PERMISSION_GRANTED) {
+//            mMap.setMyLocationEnabled(true);
+//        } else {
+//            // Uncheck the box and request missing location permission.
+//
+//            PermissionUtils.requestPermission(this, LOCATION_LAYER_PERMISSION_REQUEST_CODE,
+//                    Manifest.permission.ACCESS_FINE_LOCATION, false);
+//        }
+//
+
+
+
+            return currentLocation;
+
         }
 
-        LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        Location myLocation = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        if(currentLocation == null) {
+            LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            Location myLocation = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 
-        // Location wasn't found, check the next most accurate place for the current location
-        if (myLocation == null) {
-            Criteria criteria = new Criteria();
-            criteria.setAccuracy(Criteria.ACCURACY_COARSE);
-            // Finds a provider that matches the criteria
-            String provider = lm.getBestProvider(criteria, true);
-            // Use the provider to get the last known location
-            myLocation = lm.getLastKnownLocation(provider);
+            // Location wasn't found, check the next most accurate place for the current location
+            if (myLocation == null) {
+                Criteria criteria = new Criteria();
+                criteria.setAccuracy(Criteria.ACCURACY_COARSE);
+                // Finds a provider that matches the criteria
+                String provider = lm.getBestProvider(criteria, true);
+                // Use the provider to get the last known location
+                myLocation = lm.getLastKnownLocation(provider);
+            }
+
+            return myLocation;
         }
+        return currentLocation;
 
-        return myLocation;
     }
 
     private void enableMyLocation() {
@@ -807,6 +836,13 @@ public class MapsActivity extends AppCompatActivity implements
 
 
             searchLoc = latLng;
+
+
+            if(currentLocation == null) {
+
+                currentLocation=   getMyLocation();
+
+            }
 
 
             route(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), latLng);
