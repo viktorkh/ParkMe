@@ -845,7 +845,15 @@ public class MapsActivity extends AppCompatActivity implements
             }
 
 
-            route(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), latLng);
+            long date = System.currentTimeMillis() / 1000;
+
+            if(searchTime != null){
+
+              date=  searchTime.getTimeInMillis()/1000;
+            }
+
+
+            route(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), latLng,date);
             return true;
 
 
@@ -1058,13 +1066,14 @@ public class MapsActivity extends AppCompatActivity implements
         }
     }
 
-    protected void route(LatLng sourcePosition, LatLng destPosition) {
+    protected void route(LatLng sourcePosition, LatLng destPosition,long date) {
 
 
+        //date.getTime() / 1000
 
                 try {
 
-                    GMapV2DirectionAsyncTask md = (GMapV2DirectionAsyncTask) new GMapV2DirectionAsyncTask(sourcePosition,destPosition, new GMapV2DirectionAsyncTask.AsyncResponse(){
+                    GMapV2DirectionAsyncTask md = (GMapV2DirectionAsyncTask) new GMapV2DirectionAsyncTask(sourcePosition,destPosition,date, new GMapV2DirectionAsyncTask.AsyncResponse(){
 
                         @Override
                         public void processFinish(List<List<HashMap<String, String>>> routes) {

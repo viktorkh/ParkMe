@@ -35,11 +35,13 @@ public class GMapV2DirectionAsyncTask extends AsyncTask<String, Void, List<List<
     private final static String TAG = GMapV2DirectionAsyncTask.class.getSimpleName();
 
     private LatLng start, end;
+    private  long date;
     private String mode;
 
-    public GMapV2DirectionAsyncTask(LatLng sourcePosition, LatLng destPosition,AsyncResponse delegate) {
+    public GMapV2DirectionAsyncTask(LatLng sourcePosition, LatLng destPosition, long date, AsyncResponse delegate) {
         this.start = sourcePosition;
         this.end = destPosition;
+        this.date = date;
         this.delegate = delegate;
     }
 
@@ -50,7 +52,8 @@ public class GMapV2DirectionAsyncTask extends AsyncTask<String, Void, List<List<
                 +start.latitude+","+start.longitude
                 +"&destination="
                 +end.latitude+","+end.longitude
-                +"&sensor=false&units=metric&key=AIzaSyDPAPbkxkFLbbhj6ozDW68ZkEY3j6wlClo";
+              //  +"&sensor=false&units=metric&key=AIzaSyDPAPbkxkFLbbhj6ozDW68ZkEY3j6wlClo";
+                +"&departure_time="+date+"&units=metric&key=AIzaSyDPAPbkxkFLbbhj6ozDW68ZkEY3j6wlClo";
         Log.d("url: ", urlStr);
 
         URL url;

@@ -36,7 +36,7 @@ public class PathJSONParser {
                 for (int j = 0; j < jLegs.length(); j++) {
                     jSteps = ((JSONObject) jLegs.get(j)).getJSONArray("steps");
 
-                    duratoin = ((JSONObject) jLegs.get(j)).getJSONObject("duration").getString("value");
+                    duratoin = ((JSONObject) jLegs.get(j)).getJSONObject("duration_in_traffic").getString("value");
                     address = ((JSONObject) jLegs.get(j)).getString("end_address");
                     addressLat=((JSONObject) jLegs.get(j)).getJSONObject("end_location").getString("lat");
                     addressLong=((JSONObject) jLegs.get(j)).getJSONObject("end_location").getString("lng");
